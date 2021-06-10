@@ -7,9 +7,10 @@ from django.conf.urls.static import static
 app_name='application'
 
 urlpatterns = [
-    path('api/auth/login/',views.AuthViewSet.as_view({'get': 'retrieve'}),name='login'),
-    path('api/auth/logout/',views.AuthViewSet.as_view({'get': 'retrieve'}),name='logout'),
-    path('api/auth/register/',views.Registration.as_view(),name='register')
+    path('api/auth/register/',views.Registration.as_view(),name='register'),
+    path('api/auth/login/',views.UserLoginAPIView.as_view(),name='login'),
+    path('api/auth/logout/',views.Logout.as_view(),name='logout'),
+
 ]
 
 if settings.DEBUG:

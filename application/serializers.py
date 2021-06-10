@@ -6,29 +6,57 @@ from django.contrib.auth import password_validation as validators
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth import get_user_model, authenticate
 from django.core import exceptions
+from rest_framework.exceptions import ValidationError
+from django.db.models import Q 
 
 User = get_user_model()
 
-class UserLoginSerializer(serializers.Serializer):
-    email = serializers.CharField(max_length=300, required=True)
-    password = serializers.CharField(required=True, write_only=True)
-
-
-class AuthUserSerializer(serializers.ModelSerializer):
-    auth_token = serializers.SerializerMethodField()
+class UserLoginSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(max_length=255, required=True)
+    password = serializers.CharField(max_length=255, required=True)
 
     class Meta:
-         model = User
-         fields = ('id', 'email', 'first_name', 'last_name', 'is_active', 'is_staff')
-         read_only_fields = ('id', 'is_active', 'is_staff')
-    
-    def get_auth_token(self, obj):
-        token = Token.objects.create(user=obj)
-        return token.key
+        model = User
+        fields = ['username', 'password']
+        extra_kwargs = {'password': {'write_only': True}}
 
-class EmptySerializer(serializers.Serializer):
-    pass
+    def validate(self, attrs, ):
+        user = authenticate(
+            username=attrs['username'], password=attrs['password'])
+        if user is None:
+            raise serializers.ValidationError('invalid credentials provided')
+        self.instance = user
+        return user
 
+
+
+class UserLogoutSerializer(serializers.ModelSerializer):
+    token = serializers.CharField()
+    status = serializers.CharField(required=False, read_only=True)
+
+    def validate(self, data):
+        token = data.get("token", None)
+        print(token)
+        user = None
+        try:
+            user = User.objects.get(token=token)
+            if not user.ifLogged:
+                raise ValidationError("User is not logged in.")
+        except Exception as e:
+            raise ValidationError(str(e))
+        user.ifLogged = False
+        user.token = ""
+        user.save()
+        data['status'] = "User is logged out."
+        return data
+
+    class Meta:
+        model = User
+        fields = (
+            'token',
+            'status',
+        )
+        
 class CreateUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
